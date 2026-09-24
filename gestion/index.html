@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Gestión Dúplex PB</title>
+<style>
+:root{--bg:#12161c;--card:#1b212a;--card2:#212a35;--line:#2c3540;--txt:#e8ecf1;--mut:#8c98a8;--acc:#5b8fd6;
+  --ok:#4caf7d;--warn:#e0b04a;--bad:#e0555f;--r:12px}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--txt);font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+button,input,select,textarea{font:inherit;color:inherit}
+.wrap{max-width:1180px;margin:0 auto;padding:16px}
+h1{font-size:19px}h2{font-size:15px;margin:18px 0 8px}h3{font-size:14px;margin:12px 0 6px}
+.mut{color:var(--mut)}.small{font-size:12px}.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.ok{color:var(--ok)}.bad{color:var(--bad)}.warn{color:var(--warn)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:14px}
+.btn{background:var(--card2);border:1px solid var(--line);border-radius:8px;padding:7px 12px;cursor:pointer}
+.btn:hover{border-color:var(--acc)}.btn.pri{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:600}
+.btn.danger{border-color:var(--bad);color:var(--bad)}.btn:disabled{opacity:.5;cursor:default}
+input,select,textarea{background:var(--card2);border:1px solid var(--line);border-radius:8px;padding:7px 9px;min-width:0}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--acc);outline-offset:-1px}
+label{display:block;font-size:12px;color:var(--mut);margin-bottom:3px}
+/* login */
+#login{max-width:360px;margin:12vh auto 0;text-align:center}
+#login .card{padding:24px}#login input{width:100%;margin:12px 0}
+/* header + tabs */
+header{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;margin-bottom:12px}
+nav{display:flex;gap:4px;flex-wrap:wrap;border-bottom:1px solid var(--line);margin-bottom:14px}
+nav button{background:none;border:none;border-bottom:2px solid transparent;padding:9px 12px;cursor:pointer;color:var(--mut)}
+nav button.on{color:var(--txt);border-bottom-color:var(--acc);font-weight:600}
+/* kpis */
+.kpis{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px}
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:11px 13px}
+.kpi .l{font-size:11.5px;color:var(--mut)}.kpi .v{font-size:19px;font-weight:700;font-variant-numeric:tabular-nums;margin-top:2px}
+.kpi .s{font-size:11.5px;color:var(--mut);margin-top:2px}
+.bar{height:6px;background:var(--card2);border-radius:4px;overflow:hidden;margin-top:6px}.bar i{display:block;height:100%;background:var(--acc)}
+/* tablas */
+.tw{overflow-x:auto;border:1px solid var(--line);border-radius:var(--r);background:var(--card)}
+table{border-collapse:collapse;width:100%}
+th,td{padding:7px 9px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:11.5px;color:var(--mut);font-weight:600;text-align:left;background:var(--card2);position:sticky;top:0;white-space:nowrap}
+tr:last-child td{border-bottom:none}tr.tot td{font-weight:700;background:var(--card2)}
+tr.cap{cursor:pointer}tr.cap:hover td{background:var(--card2)}tr.sub td{font-size:12.5px;background:#171c23}
+tbody tr.sel td{background:#22324a}
+.chip{display:inline-block;font-size:11px;padding:1px 7px;border-radius:10px;border:1px solid var(--line);white-space:nowrap}
+.chip.sin{border-color:var(--bad);color:var(--bad)}.chip.rev{border-color:var(--warn);color:var(--warn)}
+.chip.gen{border-color:var(--acc);color:var(--acc)}.chip.prov{border-color:var(--warn);color:var(--warn);font-size:10px}
+/* filtros */
+.filtros{display:flex;flex-wrap:wrap;gap:8px;align-items:end;margin-bottom:10px}
+.filtros>div{flex:1 1 150px}.filtros input,.filtros select{width:100%}
+.lote{display:none;gap:8px;align-items:center;flex-wrap:wrap;background:#22324a;border:1px solid var(--acc);border-radius:var(--r);padding:9px 12px;margin-bottom:10px}
+.lote.on{display:flex}.lote select{flex:1 1 260px}
+/* modal */
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:flex-start;justify-content:center;padding:4vh 12px;z-index:10;overflow:auto}
+.modal.on{display:flex}.modal .card{width:100%;max-width:640px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}.grid2 .full{grid-column:1/-1}
+.grid2 input,.grid2 select,.grid2 textarea{width:100%}
+.acc{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;margin-top:14px}
+#toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:var(--card2);border:1px solid var(--acc);border-radius:10px;padding:9px 16px;display:none;z-index:20}
+.diff{font-size:12px}.diff b{color:var(--mut);font-weight:600}
+.avrow input[type=number]{width:74px}.avrow input.nota{width:100%;min-width:120px}
+tr.chg td{background:#2a3322}
+@media (max-width:640px){.grid2{grid-template-columns:1fr}.kpi .v{font-size:17px}.wrap{padding:12px}}
+</style>
+</head>
+<body>
+<div id="login">
+  <div class="card">
+    <h1>Dúplex PB · Gestión</h1>
+    <p class="mut small" style="margin-top:6px">Zona privada de Cúpula</p>
+    <input id="clave" type="password" placeholder="Clave" autocomplete="current-password">
+    <button class="btn pri" style="width:100%" id="entrar">Entrar</button>
+    <p id="lerr" class="bad small" style="margin-top:10px"></p>
+  </div>
+</div>
+
+<div id="app" class="wrap" style="display:none">
+  <header>
+    <div><h1 id="titulo">Dúplex PB</h1><div class="mut small" id="subt"></div></div>
+    <div style="display:flex;gap:8px"><button class="btn" id="recargar">↻ Actualizar</button><button class="btn" id="salir">Salir</button></div>
+  </header>
+  <nav id="tabs">
+    <button data-t="tablero" class="on">📊 Tablero</button>
+    <button data-t="compras">🧾 Compras</button>
+    <button data-t="avance">📐 Avance</button>
+    <button data-t="cobros">💵 Cobros</button>
+    <button data-t="hist">🕘 Historial</button>
+  </nav>
+
+  <section id="t-tablero"></section>
+
+  <section id="t-compras" style="display:none">
+    <div class="filtros">
+      <div><label>Buscar</label><input id="fq" placeholder="proveedor, detalle, código…"></div>
+      <div><label>Estado</label><select id="fe">
+        <option value="">Todas</option><option value="sin">Sin imputar</option><option value="rev">A revisar</option>
+        <option value="gen">En genérico de capítulo</option><option value="ok">Imputadas</option></select></div>
+      <div><label>Capítulo</label><select id="fc"></select></div>
+      <div><label>Partida</label><select id="fp"></select></div>
+      <div><label>Trimestre</label><select id="ft"></select></div>
+      <div style="flex:0 0 auto"><button class="btn pri" id="nueva">+ Nueva compra</button></div>
+    </div>
+    <div class="lote" id="lote">
+      <b id="lote-n"></b>
+      <select id="lote-p"></select>
+      <button class="btn pri" id="lote-ok">Pasar a esa partida</button>
+      <button class="btn" id="lote-rev">Marcar revisadas</button>
+      <button class="btn" id="lote-x">Cancelar</button>
+    </div>
+    <div class="mut small" id="cresumen" style="margin-bottom:6px"></div>
+    <div class="tw"><table><thead><tr>
+      <th><input type="checkbox" id="call"></th><th>Fecha</th><th>Proveedor</th><th>Detalle</th><th class="num">Monto</th>
+      <th>Partida</th><th>Estado</th><th></th></tr></thead><tbody id="ctb"></tbody></table></div>
+  </section>
+
+  <section id="t-avance" style="display:none">
+    <div class="filtros">
+      <div><label>Fecha de la medición</label><input type="date" id="afecha"></div>
+      <div><label>Capítulo</label><select id="acap"></select></div>
+      <div style="flex:0 0 auto"><button class="btn pri" id="aguardar" disabled>Guardar cambios</button></div>
+    </div>
+    <p class="mut small" style="margin-bottom:8px">Cargá el % acumulado de cada partida a la fecha elegida. Para armar la historia por trimestre
+      podés cargar mediciones con fecha pasada (ej. 31/12/2025, 31/03/2026, 30/06/2026).</p>
+    <div class="tw"><table><thead><tr><th>Partida</th><th>Ud</th><th class="num">Cant.</th><th class="num">Último %</th>
+      <th>Nuevo %</th><th>Nota</th></tr></thead><tbody id="atb"></tbody></table></div>
+  </section>
+
+  <section id="t-cobros" style="display:none"></section>
+  <section id="t-hist" style="display:none"></section>
+</div>
+
+<!-- modal compra -->
+<div class="modal" id="mc"><div class="card">
+  <h2 id="mc-t" style="margin-top:0">Compra</h2>
+  <div class="mut small" id="mc-info" style="margin-bottom:10px"></div>
+  <div class="grid2">
+    <div><label>Fecha</label><input type="date" id="m-fecha"></div>
+    <div><label>Monto Gs</label><input type="number" id="m-monto" step="1"></div>
+    <div><label>Proveedor</label><input id="m-proveedor"></div>
+    <div><label>Factura / certificado</label><input id="m-factura"></div>
+    <div class="full"><label>Detalle</label><input id="m-detalle"></div>
+    <div class="full"><label>Partida</label><select id="m-partida"></select></div>
+    <div class="full"><label>Insumo de la partida</label><select id="m-insumo"></select></div>
+    <div><label>Cantidad</label><input id="m-cant"></div>
+    <div><label>Unidad</label><input id="m-unidad"></div>
+    <div><label>Tipo</label><select id="m-tipo">
+      <option value="">—</option><option>CD</option><option>CI</option><option>SUB</option><option>MAT</option><option>MO</option></select></div>
+    <div><label>Estado</label><select id="m-revisar"><option value="">Revisada / OK</option><option value="revisar">A revisar</option></select></div>
+  </div>
+  <div class="acc">
+    <button class="btn danger" id="m-borrar">Borrar</button>
+    <button class="btn" id="m-hist">Historial</button>
+    <span style="flex:1"></span>
+    <button class="btn" id="m-cancelar">Cancelar</button>
+    <button class="btn pri" id="m-guardar">Guardar</button>
+  </div>
+  <div id="m-histbox" style="margin-top:12px"></div>
+</div></div>
+
+<!-- modal cobro -->
+<div class="modal" id="mb"><div class="card">
+  <h2 style="margin-top:0" id="mb-t">Cobro</h2>
+  <div class="grid2">
+    <div><label>Fecha</label><input type="date" id="b-fecha"></div>
+    <div><label>Tipo</label><select id="b-tipo"><option value="cobro">Cobro del cliente</option>
+      <option value="aporte_gf">Aporte a gastos fijos (sale de la obra)</option><option value="otro">Otro</option></select></div>
+    <div><label>Monto Gs</label><input type="number" id="b-monto"></div>
+    <div><label>USD (si fue en dólares)</label><input type="number" id="b-usd" step="0.01"></div>
+    <div class="full"><label>Concepto</label><input id="b-concepto"></div>
+    <div class="full"><label>Observación</label><input id="b-obs"></div>
+  </div>
+  <div class="acc"><button class="btn danger" id="b-borrar">Borrar</button><span style="flex:1"></span>
+    <button class="btn" id="b-cancelar">Cancelar</button><button class="btn pri" id="b-guardar">Guardar</button></div>
+</div></div>
+
+<div id="toast"></div>
+
+<script>
+const SB = 'https://sojylqmwrqkyskhvsatn.supabase.co';
+const KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNvanlscW13cnFreXNraHZzYXRuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcxNjU1NDMsImV4cCI6MjEwMjc0MTU0M30.Q1BlbHmGqAyiD68HV_xtUF3_xSl7N6ty-1DUECwJZrk';
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const gs = n => Math.round(n || 0).toLocaleString('es-PY');
+const mm = n => ((n || 0) / 1e6).toLocaleString('es-PY', {minimumFractionDigits: 1, maximumFractionDigits: 1}) + ' M';
+const pc = (n, d = 1) => (n || 0).toLocaleString('es-PY', {minimumFractionDigits: d, maximumFractionDigits: d}) + ' %';
+const hoyISO = () => new Date().toISOString().slice(0, 10);
+const fdate = s => s ? s.slice(8, 10) + '/' + s.slice(5, 7) + '/' + s.slice(2, 4) : '—';
+const trim = s => s ? `${s.slice(0, 4)}-T${Math.floor((+s.slice(5, 7) - 1) / 3) + 1}` : '';
+function toast(t, bad) { const e = $('#toast'); e.textContent = t; e.style.borderColor = bad ? 'var(--bad)' : 'var(--acc)';
+  e.style.display = 'block'; clearTimeout(e._t); e._t = setTimeout(() => e.style.display = 'none', 3200); }
+function store(k, v) { try { v === undefined ? sessionStorage.removeItem(k) : sessionStorage.setItem(k, v); } catch (e) {} }
+function load(k) { try { return sessionStorage.getItem(k); } catch (e) { return null; } }
+
+let CLAVE = null, D = null, P = {}, CAPS = [], PROV = new Set();
+async function rpc(fn, args) {
+  const r = await fetch(`${SB}/rest/v1/rpc/${fn}`, {method: 'POST',
+    headers: {apikey: KEY, Authorization: 'Bearer ' + KEY, 'Content-Type': 'application/json'}, body: JSON.stringify(args)});
+  let j; try { j = await r.json(); } catch (e) { j = null; }
+  if (!r.ok) throw new Error((j && (j.message || j.hint)) || r.statusText);
+  if (j && j.error) throw new Error(j.error);
+  return j;
+}
+
+// ------------------------------------------------------------------ login
+async function entrar(clave) {
+  $('#lerr').textContent = ''; $('#entrar').disabled = true;
+  try {
+    D = await rpc('duplex_datos', {p_clave: clave});
+    CLAVE = clave; store('duplex_clave', clave);
+    $('#login').style.display = 'none'; $('#app').style.display = 'block';
+    prep(); render();
+  } catch (e) { $('#lerr').textContent = e.message; store('duplex_clave'); $('#login').style.display = 'block'; }
+  $('#entrar').disabled = false;
+}
+$('#entrar').onclick = () => entrar($('#clave').value);
+$('#clave').onkeydown = e => { if (e.key === 'Enter') entrar($('#clave').value); };
+$('#salir').onclick = () => { store('duplex_clave'); location.reload(); };
+$('#recargar').onclick = async () => { try { D = await rpc('duplex_datos', {p_clave: CLAVE}); prep(); render(); toast('Datos actualizados'); } catch (e) { toast(e.message, 1); } };
+
+// ------------------------------------------------------------------ preparar datos
+function prep() {
+  P = {}; (D.partidas || []).forEach(p => P[p.cod] = p);
+  CAPS = Object.keys(D.obra.caps); PROV = new Set(D.obra.caps_provisorios || []);
+  $('#titulo').textContent = `${D.obra.nombre} · Gestión`;
+  $('#subt').textContent = `${D.obra.cliente} · contrato ₲ ${gs(D.obra.contrato_con_iva)} IVA inc. · datos al ${new Date().toLocaleString('es-PY')}`;
+  // selects de partida (compras, lote, modal) y filtros
+  const opts = CAPS.map(c => `<optgroup label="${esc(c + ' · ' + D.obra.caps[c])}">` +
+    D.partidas.filter(p => p.cap === c).map(p => `<option value="${esc(p.cod)}">${esc(p.cod)} · ${esc(p.desc.slice(0, 60))}${p.grupo ? ' — ' + esc(p.grupo.split(' · ')[1] || p.grupo).slice(0, 30) : ''}</option>`).join('') +
+    '</optgroup>').join('');
+  $('#m-partida').innerHTML = '<option value="">— sin imputar —</option>' + opts;
+  $('#lote-p').innerHTML = '<option value="">— elegí la partida destino —</option>' + opts;
+  $('#fp').innerHTML = '<option value="">Todas</option>' + opts;
+  $('#fc').innerHTML = '<option value="">Todos</option>' + CAPS.map(c => `<option value="${c}">${c} · ${esc(D.obra.caps[c])}</option>`).join('');
+  $('#acap').innerHTML = '<option value="">Todos</option>' + CAPS.map(c => `<option value="${c}">${c} · ${esc(D.obra.caps[c])}</option>`).join('');
+  const ts = [...new Set(D.compras.map(c => trim(c.fecha)).filter(Boolean))].sort();
+  $('#ft').innerHTML = '<option value="">Todos</option>' + ts.map(t => `<option>${t}</option>`).join('');
+  if (!$('#afecha').value) $('#afecha').value = hoyISO();
+}
+
+// ------------------------------------------------------------------ cálculos
+function pctA(cod, corte) {            // % acumulado de la partida a la fecha de corte (última medición ≤ corte)
+  let best = null;
+  for (const a of D.avance) if (a.partida === cod && (!corte || a.fecha <= corte) && (!best || a.fecha > best.fecha || (a.fecha === best.fecha && a.id > best.id))) best = a;
+  return best;
+}
+function calc(corte) {
+  const part = {}, cap = {}, tot = {V: 0, O: 0, C: 0, prodV: 0, prodO: 0, pendV: 0, pendO: 0, proy: 0};
+  for (const p of D.partidas) {
+    const a = pctA(p.cod, corte), f = a ? a.pct / 100 : 0;
+    part[p.cod] = {p, a: f, fecha: a && a.fecha, V: p.venta || 0, O: p.obj || 0, C: 0};
+  }
+  let sinPart = 0;
+  for (const c of D.compras) {
+    if (corte && (!c.fecha || c.fecha > corte)) continue;
+    const x = part[c.partida];
+    if (x) x.C += c.monto || 0; else sinPart += c.monto || 0;
+  }
+  for (const x of Object.values(part)) {
+    x.prodV = x.a * x.V; x.prodO = x.a * x.O; x.pendV = x.V - x.prodV; x.pendO = x.O - x.prodO;
+    x.desv = x.C - x.prodO; x.proy = x.C + Math.max(0, x.pendO);
+    const k = x.p.cap; cap[k] = cap[k] || {V: 0, O: 0, C: 0, prodV: 0, prodO: 0, pendV: 0, pendO: 0, proy: 0};
+    for (const f of ['V', 'O', 'C', 'prodV', 'prodO', 'pendV', 'pendO', 'proy']) { cap[k][f] += x[f]; tot[f] += x[f]; }
+  }
+  tot.C += sinPart; tot.proy += sinPart; tot.sinPart = sinPart;
+  tot.a = tot.V ? tot.prodV / tot.V : 0;
+  let cob = 0, gf = 0;
+  for (const b of D.cobros) { if (corte && b.fecha > corte) continue;
+    if (b.tipo === 'cobro') cob += b.monto || 0; else if (b.tipo === 'aporte_gf') gf += b.monto || 0; }
+  tot.cobrado = cob; tot.gf = gf;
+  return {part, cap, tot};
+}
+
+// ------------------------------------------------------------------ tablero
+function render() { renderTablero(); renderCompras(); renderAvance(); renderCobros(); if ($('#t-hist').style.display !== 'none') renderHist(); }
+function kpi(l, v, s, bar) { return `<div class="kpi"><div class="l">${l}</div><div class="v">${v}</div>${s ? `<div class="s">${s}</div>` : ''}${bar != null ? `<div class="bar"><i style="width:${Math.min(100, Math.max(0, bar))}%"></i></div>` : ''}</div>`; }
+function renderTablero() {
+  const {part, cap, tot} = calc(null), K = D.obra.contrato_con_iva;
+  const margenProy = K - tot.proy, dif = tot.cobrado - tot.prodV;
+  // tiempo
+  const ini = new Date(D.obra.inicio), fin = new Date(D.obra.fin_prevista), hoy = new Date();
+  const dia = 864e5, trans = (hoy - ini) / dia, plazo = (fin - ini) / dia;
+  const finProy = tot.a > 0.02 ? new Date(ini.getTime() + trans / tot.a * dia) : null;
+  const restPrev = (fin - hoy) / dia, restProy = finProy ? (finProy - hoy) / dia : null;
+  const mesesRest = finProy ? Math.max(restProy / 30.4, 0.5) : null;
+  const sinAv = !D.avance.length;
+  let h = '';
+  if (sinAv) h += `<div class="card warn" style="margin-bottom:12px">Todavía no hay avance cargado: la producción, lo pendiente y el tiempo salen en 0.
+    Cargalo en la pestaña <b>📐 Avance</b>.</div>`;
+  if (tot.sinPart) h += `<div class="card" style="margin-bottom:12px;border-color:var(--bad)">Hay <b>₲ ${gs(tot.sinPart)}</b> en compras sin imputar
+    (<a href="#" onclick="irCompras('sin');return false" style="color:var(--acc)">ver</a>). Cuentan en el costo total pero no en ninguna partida.</div>`;
+  h += '<h2>Situación económica</h2><div class="kpis">' +
+    kpi('Contrato (IVA inc.)', mm(K), `Venta partidas ${mm(tot.V)}`) +
+    kpi('Cobrado a Pili', mm(tot.cobrado), pc(tot.cobrado / K * 100) + ' del contrato', tot.cobrado / K * 100) +
+    kpi('Saldo por cobrar', mm(K - tot.cobrado)) +
+    kpi('Aportes a gastos fijos', mm(tot.gf), 'salió de la caja de obra') +
+    kpi('Objetivo (costo)', mm(tot.O), `k ${(K / tot.O).toFixed(3)} · margen obj. ${pc((K - tot.O) / K * 100)}`) +
+    kpi('Comprado', mm(tot.C), pc(tot.C / tot.O * 100) + ' del objetivo', tot.C / tot.O * 100) +
+    kpi('Costo final proyectado', mm(tot.proy), 'comprado + pendiente según objetivo') +
+    kpi('Margen proyectado', `<span class="${margenProy < 0 ? 'bad' : 'ok'}">${mm(margenProy)}</span>`, pc(margenProy / K * 100) + ' del contrato') +
+    '</div><h2>Producción y tiempo</h2><div class="kpis">' +
+    kpi('Avance físico', pc(tot.a * 100), 'ponderado por venta', tot.a * 100) +
+    kpi('Producido (venta)', mm(tot.prodV), `a costo objetivo ${mm(tot.prodO)}`) +
+    kpi('Falta producir (venta)', mm(tot.pendV), `a costo objetivo ${mm(tot.pendO)}`) +
+    kpi('Cobrado − producido', `<span class="${dif < 0 ? 'bad' : ''}">${mm(dif)}</span>`, dif >= 0 ? 'anticipo financiero del cliente' : 'producido sin cobrar') +
+    kpi('Consumo vs avance', `<span class="${tot.C - tot.prodO - tot.sinPart > 0 ? 'warn' : 'ok'}">${mm(tot.C - tot.prodO)}</span>`, 'comprado − costo esperado del avance') +
+    kpi('Plazo', `${Math.round(trans)} de ${Math.round(plazo)} días`, `inicio ${fdate(D.obra.inicio)} · fin previsto ${fdate(D.obra.fin_prevista)}`, trans / plazo * 100) +
+    kpi('Fin proyectado', finProy ? finProy.toLocaleDateString('es-PY') : '—',
+        finProy ? `${restProy > 0 ? 'faltan ' + Math.round(restProy) + ' días' : 'ya vencido'} · previsto ${restPrev > 0 ? 'faltan ' + Math.round(restPrev) : 'vencido hace ' + Math.round(-restPrev)} días` : 'se calcula con el avance') +
+    kpi('Ritmo necesario', mesesRest ? mm(tot.pendV / mesesRest) + '/mes' : '—', mesesRest ? `para terminar en ${mesesRest.toLocaleString('es-PY', {maximumFractionDigits: 1})} meses (proyección)` : '') +
+    '</div>';
+  // trimestres
+  const qs = []; let d = new Date(2025, 9, 1);
+  while (d <= new Date()) { const y = d.getFullYear(), q = Math.floor(d.getMonth() / 3); const end = new Date(y, q * 3 + 3, 0);
+    qs.push({n: `${y}-T${q + 1}`, fin: end.toISOString().slice(0, 10)}); d = new Date(y, q * 3 + 3, 1); }
+  let prev = {prodV: 0, prodO: 0, C: 0, cobrado: 0, gf: 0};
+  h += '<h2>Por trimestre</h2><div class="tw"><table><thead><tr><th>Trimestre</th><th class="num">Producción (venta)</th><th class="num">Costo según objetivo</th>' +
+    '<th class="num">Compras</th><th class="num">Resultado (prod − compras)</th><th class="num">Cobros</th><th class="num">Aportes GF</th>' +
+    '<th class="num">Caja (cobros − compras − GF)</th><th class="num">Avance acum.</th></tr></thead><tbody>';
+  const ac = {prodV: 0, C: 0, cob: 0, gf: 0};
+  for (const q of qs) {
+    const corte = q.fin > hoyISO() ? hoyISO() : q.fin, t = calc(corte).tot;
+    const x = {prodV: t.prodV - prev.prodV, prodO: t.prodO - prev.prodO, C: t.C - prev.C, cob: t.cobrado - prev.cobrado, gf: t.gf - prev.gf};
+    h += `<tr><td>${q.n}${q.fin > hoyISO() ? ' <span class="mut small">(en curso)</span>' : ''}</td><td class="num">${gs(x.prodV)}</td><td class="num">${gs(x.prodO)}</td>` +
+      `<td class="num">${gs(x.C)}</td><td class="num ${x.prodV - x.C < 0 ? 'bad' : ''}">${gs(x.prodV - x.C)}</td><td class="num">${gs(x.cob)}</td>` +
+      `<td class="num">${gs(x.gf)}</td><td class="num ${x.cob - x.C - x.gf < 0 ? 'bad' : ''}">${gs(x.cob - x.C - x.gf)}</td><td class="num">${pc(t.a * 100)}</td></tr>`;
+    prev = t;
+  }
+  h += `<tr class="tot"><td>Acumulado</td><td class="num">${gs(tot.prodV)}</td><td class="num">${gs(tot.prodO)}</td><td class="num">${gs(tot.C)}</td>` +
+    `<td class="num">${gs(tot.prodV - tot.C)}</td><td class="num">${gs(tot.cobrado)}</td><td class="num">${gs(tot.gf)}</td>` +
+    `<td class="num">${gs(tot.cobrado - tot.C - tot.gf)}</td><td class="num">${pc(tot.a * 100)}</td></tr></tbody></table></div>` +
+    '<p class="mut small" style="margin-top:6px">La producción de cada trimestre sale de las mediciones de avance cargadas con fecha dentro del trimestre (la última medición ≤ fin de trimestre).</p>';
+  // capítulos y partidas
+  h += '<h2>Por capítulo y partida <span class="mut small">(tocá un capítulo para abrirlo)</span></h2><div class="tw"><table><thead><tr>' +
+    '<th>Capítulo / partida</th><th class="num">Venta</th><th class="num">Objetivo</th><th class="num">Avance</th><th class="num">Falta producir (venta)</th>' +
+    '<th class="num">Comprado</th><th class="num">Costo esperado del avance</th><th class="num">Desvío</th><th class="num">Costo final proy.</th><th class="num">Margen proy.</th></tr></thead><tbody>';
+  for (const c of CAPS) {
+    const x = cap[c]; if (!x) continue; const av = x.V ? x.prodV / x.V : 0;
+    h += `<tr class="cap" onclick="toggleCap('${c}')"><td><b>${c}</b> · ${esc(D.obra.caps[c])} ${PROV.has(c) ? '<span class="chip prov">prov.</span>' : ''}</td>` + fila(x, av) + '</tr>';
+    for (const p of D.partidas.filter(p => p.cap === c)) {
+      const y = part[p.cod]; if (!y.V && !y.O && !y.C) continue;
+      h += `<tr class="sub cap-${c.replace('.', '_')}" style="display:none"><td style="padding-left:22px">${esc(p.cod)} · ${esc(p.desc.slice(0, 55))}` +
+        `${p.grupo ? `<div class="mut small">${esc(p.grupo)}</div>` : ''}${y.fecha ? `<div class="mut small">medido ${fdate(y.fecha)}</div>` : ''}</td>` + fila(y, y.a) + '</tr>';
+    }
+  }
+  if (tot.sinPart) h += `<tr><td>Sin imputar</td><td></td><td></td><td></td><td></td><td class="num">${gs(tot.sinPart)}</td><td></td><td class="num bad">${gs(tot.sinPart)}</td><td class="num">${gs(tot.sinPart)}</td><td class="num bad">${gs(-tot.sinPart)}</td></tr>`;
+  h += `<tr class="tot"><td>Total</td>` + fila(tot, tot.a) + '</tr></tbody></table></div>' +
+    '<p class="mut small" style="margin-top:6px">Desvío = comprado − costo esperado del avance (positivo: se gastó más de lo que corresponde a lo producido). ' +
+    'Costo final proy. = comprado + lo que falta según objetivo. Los capítulos <span class="chip prov">prov.</span> usan el presupuesto viejo hasta que estén en el Presto.</p>';
+  $('#t-tablero').innerHTML = h;
+}
+function fila(x, av) {
+  const des = x.C - x.prodO, mg = x.V - x.proy;
+  return `<td class="num">${gs(x.V)}</td><td class="num">${gs(x.O)}</td><td class="num">${pc(av * 100, 0)}</td><td class="num">${gs(x.pendV)}</td>` +
+    `<td class="num">${gs(x.C)}</td><td class="num">${gs(x.prodO)}</td><td class="num ${des > 0 ? 'bad' : ''}">${gs(des)}</td>` +
+    `<td class="num">${gs(x.proy)}</td><td class="num ${mg < 0 ? 'bad' : ''}">${gs(mg)}</td>`;
+}
+window.toggleCap = c => document.querySelectorAll('.cap-' + c.replace('.', '_')).forEach(r => r.style.display = r.style.display === 'none' ? '' : 'none');
+
+// ------------------------------------------------------------------ compras
+let SEL = new Set();
+function estado(c) {
+  if (!c.partida) return ['sin', '<span class="chip sin">sin imputar</span>'];
+  if (c.revisar) return ['rev', `<span class="chip rev" title="${esc(c.revisar)}">revisar</span>`];
+  if (c.partida.endsWith('.GEN')) return ['gen', '<span class="chip gen">genérico</span>'];
+  return ['ok', '<span class="chip">ok</span>'];
+}
+function filtradas() {
+  const q = $('#fq').value.trim().toLowerCase(), fe = $('#fe').value, fc = $('#fc').value, fp = $('#fp').value, ft = $('#ft').value;
+  return D.compras.filter(c => {
+    if (fe && estado(c)[0] !== fe && !(fe === 'rev' && c.revisar && c.partida)) return false;
+    if (fc && (P[c.partida] || {}).cap !== fc) return false;
+    if (fp && c.partida !== fp) return false;
+    if (ft && trim(c.fecha) !== ft) return false;
+    if (q && !`${c.codigo} ${c.proveedor} ${c.detalle} ${c.factura} ${c.cod_viejo} ${c.partida}`.toLowerCase().includes(q)) return false;
+    return true;
+  });
+}
+function renderCompras() {
+  const L = filtradas().slice().reverse();
+  $('#cresumen').textContent = `${L.length} compras · ₲ ${gs(L.reduce((s, c) => s + (c.monto || 0), 0))}` +
+    ` · sin imputar en total: ${D.compras.filter(c => !c.partida).length} · a revisar: ${D.compras.filter(c => c.partida && c.revisar).length}`;
+  $('#ctb').innerHTML = L.map(c => {
+    const p = P[c.partida], [, chip] = estado(c);
+    return `<tr class="${SEL.has(c.id) ? 'sel' : ''}"><td><input type="checkbox" data-id="${c.id}" ${SEL.has(c.id) ? 'checked' : ''}></td>` +
+      `<td style="white-space:nowrap">${fdate(c.fecha)}<div class="mut small">${esc(c.codigo || '')}</div></td>` +
+      `<td>${esc(c.proveedor)}</td><td>${esc(c.detalle)}${c.cod_viejo ? `<div class="mut small">cód. viejo ${esc(c.cod_viejo)}</div>` : ''}</td>` +
+      `<td class="num">${gs(c.monto)}</td><td>${p ? `<b>${esc(p.cod)}</b><div class="mut small">${esc(p.desc.slice(0, 45))}</div>` : '<span class="mut">—</span>'}</td>` +
+      `<td>${chip}</td><td><button class="btn" data-ed="${c.id}">✏️</button></td></tr>`;
+  }).join('') || '<tr><td colspan="8" class="mut">No hay compras con esos filtros.</td></tr>';
+  $('#call').checked = L.length > 0 && L.every(c => SEL.has(c.id));
+  lote();
+}
+['#fq', '#fe', '#fc', '#fp', '#ft'].forEach(s => $(s).addEventListener('input', renderCompras));
+$('#ctb').addEventListener('click', e => {
+  const id = e.target.dataset.id, ed = e.target.dataset.ed;
+  if (id) { e.target.checked ? SEL.add(+id) : SEL.delete(+id); e.target.closest('tr').classList.toggle('sel', e.target.checked); lote(); }
+  if (ed) abrirCompra(D.compras.find(c => c.id === +ed));
+});
+$('#call').onchange = e => { filtradas().forEach(c => e.target.checked ? SEL.add(c.id) : SEL.delete(c.id)); renderCompras(); };
+function lote() { $('#lote').classList.toggle('on', SEL.size > 0);
+  const t = D.compras.filter(c => SEL.has(c.id)).reduce((s, c) => s + (c.monto || 0), 0);
+  $('#lote-n').textContent = `${SEL.size} seleccionadas · ₲ ${gs(t)}`; }
+$('#lote-x').onclick = () => { SEL.clear(); renderCompras(); };
+async function aplicarLote(cambios, msg) {
+  try { const r = await rpc('duplex_compra_lote', {p_clave: CLAVE, p_ids: [...SEL], p_cambios: cambios});
+    toast(`${r.cambiadas} ${msg}`); SEL.clear(); await refrescar(); } catch (e) { toast(e.message, 1); }
+}
+$('#lote-ok').onclick = () => { const p = $('#lote-p').value; if (!p) return toast('Elegí la partida destino', 1);
+  aplicarLote({partida: p, insumo: '', revisar: ''}, `compras pasadas a ${p}`); };
+$('#lote-rev').onclick = () => aplicarLote({revisar: ''}, 'compras marcadas como revisadas');
+window.irCompras = est => { tab('compras'); $('#fe').value = est; renderCompras(); };
+async function refrescar() { D = await rpc('duplex_datos', {p_clave: CLAVE}); prep(); render(); }
+
+// modal compra
+let EDIT = null;
+function insumosDe(cod, sel) {
+  const p = P[cod], ins = p ? p.insumos || [] : [];
+  $('#m-insumo').innerHTML = '<option value="">— sin detallar —</option>' +
+    ins.map(i => `<option value="${esc(i.cod)}" ${i.cod === sel ? 'selected' : ''}>${esc(i.cod)} · ${esc(i.desc.slice(0, 60))} (${esc(i.unidad)})</option>`).join('') +
+    `<option value="NUEVO" ${sel === 'NUEVO' ? 'selected' : ''}>NUEVO · insumo no previsto</option>` +
+    (sel && sel !== 'NUEVO' && !ins.some(i => i.cod === sel) ? `<option value="${esc(sel)}" selected>${esc(sel)}</option>` : '');
+}
+$('#m-partida').onchange = () => insumosDe($('#m-partida').value, '');
+function abrirCompra(c) {
+  EDIT = c || null; c = c || {fecha: hoyISO()};
+  $('#mc-t').textContent = EDIT ? `Compra ${c.codigo || ''}` : 'Nueva compra';
+  $('#mc-info').textContent = EDIT ? [c.origen && `origen ${c.origen}${c.origen_fila ? ' fila ' + c.origen_fila : ''}`, c.cod_viejo && `cód. viejo ${c.cod_viejo}`,
+    c.revisar && `nota: ${c.revisar}`, c.concepto, c.editado_en && `editada ${new Date(c.editado_en).toLocaleString('es-PY')}`].filter(Boolean).join(' · ') : '';
+  for (const f of ['fecha', 'monto', 'proveedor', 'factura', 'detalle', 'cant', 'unidad', 'tipo']) $('#m-' + f).value = c[f] ?? '';
+  $('#m-partida').value = c.partida || ''; insumosDe(c.partida, c.insumo);
+  $('#m-revisar').value = c.revisar ? 'revisar' : '';
+  $('#m-borrar').style.display = $('#m-hist').style.display = EDIT ? '' : 'none';
+  $('#m-histbox').innerHTML = ''; $('#mc').classList.add('on');
+}
+$('#nueva').onclick = () => abrirCompra(null);
+$('#m-cancelar').onclick = () => $('#mc').classList.remove('on');
+$('#m-guardar').onclick = async () => {
+  const f = {}; for (const k of ['fecha', 'monto', 'proveedor', 'factura', 'detalle', 'cant', 'unidad', 'tipo', 'partida', 'insumo']) f[k] = $('#m-' + k).value;
+  if (!EDIT && (!f.fecha || !f.monto)) return toast('Para una compra nueva, fecha y monto son obligatorios', 1);
+  f.revisar = $('#m-revisar').value === 'revisar' ? (EDIT && EDIT.revisar) || 'revisar' : '';
+  if (EDIT) f.id = EDIT.id;
+  try { await rpc('duplex_compra_guardar', {p_clave: CLAVE, p_fila: f}); $('#mc').classList.remove('on'); toast('Compra guardada'); await refrescar(); }
+  catch (e) { toast(e.message, 1); }
+};
+$('#m-borrar').onclick = async () => {
+  if (!confirm('¿Borrar esta compra? Queda en el historial y se puede recuperar.')) return;
+  try { await rpc('duplex_compra_borrar', {p_clave: CLAVE, p_id: EDIT.id}); $('#mc').classList.remove('on'); toast('Compra borrada'); await refrescar(); }
+  catch (e) { toast(e.message, 1); }
+};
+$('#m-hist').onclick = async () => {
+  try { const r = await rpc('duplex_hist', {p_clave: CLAVE, p_compra_id: EDIT.id}); $('#m-histbox').innerHTML = histHTML(r.hist); }
+  catch (e) { toast(e.message, 1); }
+};
+
+// ------------------------------------------------------------------ historial
+const CAMPOS = ['fecha', 'monto', 'proveedor', 'detalle', 'partida', 'insumo', 'revisar', 'tipo', 'factura', 'cant', 'unidad'];
+function histHTML(H) {
+  if (!H.length) return '<p class="mut small">Sin cambios registrados.</p>';
+  return '<div class="tw"><table><thead><tr><th>Cuándo</th><th>Compra</th><th>Acción</th><th>Cambios</th><th></th></tr></thead><tbody>' +
+    H.map(h => {
+      const a = h.antes || {}, d = h.despues || {}, cod = (d.codigo || a.codigo || '#' + h.compra_id);
+      const cambios = h.antes && h.despues ? CAMPOS.filter(k => String(a[k] ?? '') !== String(d[k] ?? ''))
+        .map(k => `<b>${k}</b>: ${esc(k === 'monto' ? gs(a[k]) : a[k] ?? '∅')} → ${esc(k === 'monto' ? gs(d[k]) : d[k] ?? '∅')}`).join('<br>')
+        : (h.antes ? `${esc(a.proveedor)} · ${gs(a.monto)}` : `${esc(d.proveedor)} · ${gs(d.monto)}`);
+      return `<tr><td class="small" style="white-space:nowrap">${new Date(h.cuando).toLocaleString('es-PY')}</td><td>${esc(cod)}</td><td>${esc(h.accion)}</td>` +
+        `<td class="diff">${cambios || '<span class="mut">sin cambios de datos</span>'}</td>` +
+        `<td>${h.antes ? `<button class="btn" onclick="deshacer(${h.id})">↶ Deshacer</button>` : ''}</td></tr>`;
+    }).join('') + '</tbody></table></div>';
+}
+window.deshacer = async id => {
+  if (!confirm('¿Volver la compra a como estaba antes de este cambio?')) return;
+  try { await rpc('duplex_compra_deshacer', {p_clave: CLAVE, p_hist_id: id}); toast('Cambio deshecho'); $('#mc').classList.remove('on'); await refrescar(); renderHist(); }
+  catch (e) { toast(e.message, 1); }
+};
+async function renderHist() {
+  $('#t-hist').innerHTML = '<p class="mut">Cargando…</p>';
+  try { const r = await rpc('duplex_hist', {p_clave: CLAVE, p_compra_id: null});
+    $('#t-hist').innerHTML = '<p class="mut small" style="margin-bottom:8px">Últimos 300 cambios en compras. "Deshacer" devuelve la compra a como estaba antes de ese cambio (también recupera borradas).</p>' + histHTML(r.hist); }
+  catch (e) { $('#t-hist').innerHTML = `<p class="bad">${esc(e.message)}</p>`; }
+}
+
+// ------------------------------------------------------------------ avance
+const CAMB = new Map();
+function renderAvance() {
+  const fc = $('#acap').value;
+  let h = '';
+  for (const c of CAPS) {
+    if (fc && c !== fc) continue;
+    const ps = D.partidas.filter(p => p.cap === c && !p.cod.endsWith('.GEN'));
+    if (!ps.length) continue;
+    h += `<tr class="tot"><td colspan="6">${c} · ${esc(D.obra.caps[c])} ${PROV.has(c) ? '<span class="chip prov">prov.</span>' : ''}</td></tr>`;
+    for (const p of ps) {
+      const a = pctA(p.cod, null), ch = CAMB.get(p.cod) || {};
+      h += `<tr class="avrow ${CAMB.has(p.cod) ? 'chg' : ''}"><td>${esc(p.cod)} · ${esc(p.desc.slice(0, 60))}${p.grupo ? `<div class="mut small">${esc(p.grupo)}</div>` : ''}</td>` +
+        `<td>${esc(p.ud)}</td><td class="num">${p.cant_obj ? gs(p.cant_obj) : ''}</td>` +
+        `<td class="num">${a ? pc(a.pct, 0) + `<div class="mut small">${fdate(a.fecha)}</div>` : '<span class="mut">—</span>'}</td>` +
+        `<td><input type="number" min="0" max="100" step="1" data-av="${esc(p.cod)}" value="${ch.pct ?? ''}" placeholder="${a ? a.pct : ''}"></td>` +
+        `<td><input class="nota" data-nota="${esc(p.cod)}" value="${esc(ch.nota ?? '')}" placeholder="opcional"></td></tr>`;
+    }
+  }
+  $('#atb').innerHTML = h;
+  $('#aguardar').disabled = !CAMB.size; $('#aguardar').textContent = CAMB.size ? `Guardar cambios (${CAMB.size})` : 'Guardar cambios';
+}
+$('#acap').onchange = renderAvance;
+$('#atb').addEventListener('input', e => {
+  const cod = e.target.dataset.av || e.target.dataset.nota; if (!cod) return;
+  const x = CAMB.get(cod) || {};
+  if (e.target.dataset.av) x.pct = e.target.value; else x.nota = e.target.value;
+  if (x.pct === '' || x.pct == null) CAMB.delete(cod); else CAMB.set(cod, x);
+  e.target.closest('tr').classList.toggle('chg', CAMB.has(cod));
+  $('#aguardar').disabled = !CAMB.size; $('#aguardar').textContent = CAMB.size ? `Guardar cambios (${CAMB.size})` : 'Guardar cambios';
+});
+$('#aguardar').onclick = async () => {
+  const fecha = $('#afecha').value || hoyISO(), filas = [];
+  for (const [partida, x] of CAMB) { const v = +x.pct; if (isNaN(v) || v < 0 || v > 100) return toast(`% inválido en ${partida}`, 1);
+    filas.push({partida, pct: v, fecha, nota: x.nota || ''}); }
+  try { const r = await rpc('duplex_avance_guardar', {p_clave: CLAVE, p_filas: filas}); CAMB.clear(); toast(`${r.guardados} mediciones guardadas al ${fdate(fecha)}`); await refrescar(); }
+  catch (e) { toast(e.message, 1); }
+};
+
+// ------------------------------------------------------------------ cobros
+let EDB = null;
+function renderCobros() {
+  const K = D.obra.contrato_con_iva, cob = D.cobros.filter(b => b.tipo === 'cobro').reduce((s, b) => s + (b.monto || 0), 0),
+    gf = D.cobros.filter(b => b.tipo === 'aporte_gf').reduce((s, b) => s + (b.monto || 0), 0), falt = D.cobros.filter(b => !b.monto).length;
+  const {tot} = calc(null);
+  let h = '<div class="kpis">' + kpi('Contrato', mm(K)) + kpi('Cobrado a Pili', mm(cob), pc(cob / K * 100), cob / K * 100) +
+    kpi('Saldo por cobrar', mm(K - cob)) + kpi('Aportes a gastos fijos', mm(gf)) + kpi('Neto que quedó en obra', mm(cob - gf)) +
+    kpi('Cobrado − producido', mm(cob - tot.prodV), 'según avance cargado') + '</div>';
+  if (falt) h += `<p class="warn small" style="margin-top:10px">⚠ ${falt} movimiento(s) sin monto en Gs (ej. cheque USD sin convertir): completalos.</p>`;
+  h += '<div style="display:flex;justify-content:space-between;align-items:end;margin:16px 0 8px"><h2 style="margin:0">Movimientos</h2>' +
+    '<button class="btn pri" onclick="abrirCobro(null)">+ Nuevo</button></div><div class="tw"><table><thead><tr><th>Fecha</th><th>Tipo</th><th>Concepto</th>' +
+    '<th class="num">USD</th><th class="num">Monto Gs</th><th>Obs.</th><th></th></tr></thead><tbody>' +
+    D.cobros.slice().reverse().map(b => `<tr><td>${fdate(b.fecha)}</td><td>${b.tipo === 'cobro' ? 'Cobro' : b.tipo === 'aporte_gf' ? '<span class="warn">Aporte GF</span>' : 'Otro'}</td>` +
+      `<td>${esc(b.concepto)}</td><td class="num">${b.usd ? gs(b.usd) : ''}</td><td class="num">${b.monto ? gs(b.monto) : '<span class="bad">falta</span>'}</td>` +
+      `<td class="small">${esc(b.obs || '')}</td><td><button class="btn" onclick="abrirCobro(${b.id})">✏️</button></td></tr>`).join('') + '</tbody></table></div>';
+  $('#t-cobros').innerHTML = h;
+}
+window.abrirCobro = id => {
+  EDB = id ? D.cobros.find(b => b.id === id) : null; const b = EDB || {fecha: hoyISO(), tipo: 'cobro'};
+  $('#mb-t').textContent = EDB ? 'Editar movimiento' : 'Nuevo movimiento';
+  for (const f of ['fecha', 'tipo', 'monto', 'usd', 'concepto', 'obs']) $('#b-' + f).value = b[f] ?? '';
+  $('#b-borrar').style.display = EDB ? '' : 'none'; $('#mb').classList.add('on');
+};
+$('#b-cancelar').onclick = () => $('#mb').classList.remove('on');
+$('#b-guardar').onclick = async () => {
+  const f = {}; for (const k of ['fecha', 'tipo', 'monto', 'usd', 'concepto', 'obs']) f[k] = $('#b-' + k).value;
+  if (!f.fecha) return toast('Falta la fecha', 1); if (EDB) f.id = EDB.id;
+  try { await rpc('duplex_cobro_guardar', {p_clave: CLAVE, p_fila: f}); $('#mb').classList.remove('on'); toast('Guardado'); await refrescar(); }
+  catch (e) { toast(e.message, 1); }
+};
+$('#b-borrar').onclick = async () => { if (!confirm('¿Borrar este movimiento?')) return;
+  try { await rpc('duplex_cobro_borrar', {p_clave: CLAVE, p_id: EDB.id}); $('#mb').classList.remove('on'); toast('Borrado'); await refrescar(); }
+  catch (e) { toast(e.message, 1); } };
+
+// ------------------------------------------------------------------ tabs
+function tab(t) {
+  document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('on', b.dataset.t === t));
+  for (const s of ['tablero', 'compras', 'avance', 'cobros', 'hist']) $('#t-' + s).style.display = s === t ? '' : 'none';
+  if (t === 'hist') renderHist();
+}
+$('#tabs').onclick = e => { if (e.target.dataset.t) tab(e.target.dataset.t); };
+document.addEventListener('keydown', e => { if (e.key === 'Escape') document.querySelectorAll('.modal.on').forEach(m => m.classList.remove('on')); });
+
+const guardada = load('duplex_clave');
+if (guardada) entrar(guardada);
+</script>
+</body>
+</html>

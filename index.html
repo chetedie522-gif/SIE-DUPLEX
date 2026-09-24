@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dúplex PB · Avance de obra</title>
+<style>
+:root{--bg:#12161c;--card:#1b212a;--card2:#212a35;--line:#2c3540;--txt:#e8ecf1;--mut:#8c98a8;--acc:#5b8fd6;--ok:#4caf7d}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--txt);font:15px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;padding:24px 16px}
+.wrap{max-width:760px;margin:0 auto}
+header{text-align:center;margin-bottom:20px}img.logo{height:64px;margin-bottom:8px}
+h1{font-size:22px}.sub{color:var(--mut);font-size:13px;margin-top:3px}
+.big{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;text-align:center;margin-bottom:16px}
+.big .n{font-size:40px;font-weight:800;font-variant-numeric:tabular-nums}.big .l{color:var(--mut);font-size:13px}
+.bar{height:10px;background:var(--card2);border-radius:6px;overflow:hidden;margin-top:10px}.bar i{display:block;height:100%;background:var(--acc)}
+.bar.sm{height:6px;margin-top:5px}.bar i.full{background:var(--ok)}
+.meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:16px}
+.meta div{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px;font-size:13px}
+.meta b{display:block;font-size:15px}
+details{background:var(--card);border:1px solid var(--line);border-radius:12px;margin-bottom:8px}
+summary{list-style:none;cursor:pointer;padding:12px 14px}summary::-webkit-details-marker{display:none}
+summary .row{display:flex;justify-content:space-between;gap:10px;font-weight:600}
+.p{padding:8px 14px;border-top:1px solid var(--line);font-size:13.5px}
+.p .row{display:flex;justify-content:space-between;gap:10px}.p .g{color:var(--mut);font-size:12px}
+.num{font-variant-numeric:tabular-nums;white-space:nowrap}
+.foot{color:var(--mut);font-size:12px;text-align:center;margin-top:18px}
+#err{color:#e0555f;text-align:center}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <img class="logo" src="logo.png" alt="Cúpula" onerror="this.style.display='none'">
+    <h1 id="titulo">Dúplex PB</h1>
+    <div class="sub" id="sub">Avance de obra · Cúpula Estructuras</div>
+  </header>
+  <div id="err"></div>
+  <div class="big"><div class="l">Avance físico de la obra</div><div class="n" id="global">…</div>
+    <div class="bar"><i id="gbar" style="width:0"></i></div><div class="l" id="med" style="margin-top:8px"></div></div>
+  <div class="meta" id="meta"></div>
+  <div id="caps"></div>
+  <div class="foot">El avance total y por capítulo se pondera según la incidencia de cada partida en la obra.</div>
+</div>
+<script>
+const SB = 'https://sojylqmwrqkyskhvsatn.supabase.co';
+const KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNvanlscW13cnFreXNraHZzYXRuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcxNjU1NDMsImV4cCI6MjEwMjc0MTU0M30.Q1BlbHmGqAyiD68HV_xtUF3_xSl7N6ty-1DUECwJZrk';
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const pc = n => (n || 0).toLocaleString('es-PY', {maximumFractionDigits: 1}) + ' %';
+const fd = s => s ? new Date(s + 'T12:00').toLocaleDateString('es-PY') : '—';
+const bar = (p, sm) => `<div class="bar ${sm ? 'sm' : ''}"><i class="${p >= 100 ? 'full' : ''}" style="width:${Math.min(100, p || 0)}%"></i></div>`;
+(async () => {
+  try {
+    const r = await fetch(`${SB}/rest/v1/rpc/duplex_publico`, {method: 'POST',
+      headers: {apikey: KEY, Authorization: 'Bearer ' + KEY, 'Content-Type': 'application/json'}, body: '{}'});
+    if (!r.ok) throw new Error('No se pudo leer el avance (' + r.status + ')');
+    const D = await r.json(), O = D.obra || {};
+    document.getElementById('titulo').textContent = O.nombre || 'Dúplex PB';
+    document.getElementById('sub').textContent = `${O.cliente ? O.cliente + ' · ' : ''}Avance de obra · Cúpula Estructuras`;
+    document.getElementById('global').textContent = pc(D.global);
+    document.getElementById('gbar').style.width = Math.min(100, D.global || 0) + '%';
+    document.getElementById('med').textContent = D.ultima_medicion ? 'Última medición: ' + fd(D.ultima_medicion) : 'Sin mediciones cargadas';
+    const hoy = new Date(), ini = O.inicio && new Date(O.inicio), fin = O.fin_prevista && new Date(O.fin_prevista);
+    document.getElementById('meta').innerHTML =
+      `<div>Inicio<b>${fd(O.inicio)}</b></div><div>Fin previsto<b>${fd(O.fin_prevista)}</b></div>` +
+      (ini && fin ? `<div>Plazo transcurrido<b>${pc(Math.min(100, (hoy - ini) / (fin - ini) * 100))}</b></div>` : '');
+    const P = D.partidas || [], orden = Object.keys(O.caps || {});
+    const nom = k => ((O.caps || {})[k] || '').replace(/\s*\(a confirmar\)/i, '');
+    const caps = (D.capitulos || []).filter(c => c.cap !== 'CI' && P.some(p => p.cap === c.cap))
+      .sort((a, b) => orden.indexOf(a.cap) - orden.indexOf(b.cap));
+    document.getElementById('caps').innerHTML = caps.map(c => {
+      const ps = P.filter(p => p.cap === c.cap);
+      return `<details><summary><div class="row"><span>${esc(c.cap)} · ${esc(nom(c.cap))}</span><span class="num">${pc(c.pct)}</span></div>${bar(c.pct)}</summary>` +
+        ps.map(p => `<div class="p"><div class="row"><span>${esc(p.desc)}</span><span class="num">${pc(p.pct)}</span></div>` +
+          `<div class="g">${p.cant ? (+p.cant).toLocaleString('es-PY') + ' ' + esc(p.ud) : ''}${p.fecha ? ' · medido ' + fd(p.fecha) : ''}</div>${bar(p.pct, 1)}</div>`).join('') +
+        '</details>';
+    }).join('');
+  } catch (e) { document.getElementById('err').textContent = e.message; }
+})();
+</script>
+</body>
+</html>
