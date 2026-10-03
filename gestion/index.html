@@ -35,6 +35,8 @@ nav button.on{color:var(--txt);border-bottom-color:var(--acc);font-weight:600}
 .kpi{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:11px 13px}
 .kpi .l{font-size:11.5px;color:var(--mut)}.kpi .v{font-size:19px;font-weight:700;font-variant-numeric:tabular-nums;margin-top:2px}
 .kpi .s{font-size:11.5px;color:var(--mut);margin-top:2px}
+.stack{display:flex;height:22px;border-radius:6px;overflow:hidden}.stack i{display:block;height:100%}
+.leg{display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:8px;font-size:12.5px}.leg b{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px}
 .bar{height:6px;background:var(--card2);border-radius:4px;overflow:hidden;margin-top:6px}.bar i{display:block;height:100%;background:var(--acc)}
 /* tablas */
 .tw{overflow-x:auto;border:1px solid var(--line);border-radius:var(--r);background:var(--card)}
@@ -119,6 +121,8 @@ tr.chg td{background:#2a3322}
     <div class="filtros">
       <div><label>Fecha de la medición</label><input type="date" id="afecha"></div>
       <div><label>Capítulo</label><select id="acap"></select></div>
+      <div><label>Mostrar</label><select id="afil"><option value="">Todas las partidas</option>
+        <option value="sin">Sin medir (cuentan 0 %)</option><option value="d1">Medidas solo en el Dúplex 1</option></select></div>
       <div style="flex:0 0 auto"><button class="btn pri" id="aguardar" disabled>Guardar cambios</button></div>
     </div>
     <p class="mut small" style="margin-bottom:8px">Cargá el % acumulado de cada partida a la fecha elegida. Para armar la historia por trimestre
@@ -249,7 +253,8 @@ function calc(corte) {
   const part = {}, cap = {}, tot = {V: 0, O: 0, C: 0, prodV: 0, prodO: 0, pendV: 0, pendO: 0, proy: 0};
   for (const p of D.partidas) {
     const a = pctA(p.cod, corte), f = a ? a.pct / 100 : 0;
-    part[p.cod] = {p, a: f, fecha: a && a.fecha, V: p.venta || 0, O: p.obj || 0, C: 0};
+    part[p.cod] = {p, a: f, fecha: a && a.fecha, med: !!a, soloD1: !!a && /D2 sin medir/.test(a.nota || ''),
+                   V: p.venta || 0, O: p.obj || 0, C: 0};
   }
   let sinPart = 0;
   for (const c of D.compras) {
@@ -265,6 +270,13 @@ function calc(corte) {
   }
   tot.C += sinPart; tot.proy += sinPart; tot.sinPart = sinPart;
   tot.a = tot.V ? tot.prodV / tot.V : 0;
+  // calidad de la medición: partidas sin ninguna medición (cuentan 0) y medidas solo en el Dúplex 1 (D2 cuenta 0)
+  tot.sinMedN = 0; tot.sinMedV = 0; tot.d1N = 0; tot.d1Extra = 0;
+  for (const x of Object.values(part)) {
+    if (x.p.cod.endsWith('.GEN') || !x.V) continue;
+    if (!x.med) { tot.sinMedN++; tot.sinMedV += x.V; }
+    else if (x.soloD1) { tot.d1N++; tot.d1Extra += Math.min(x.a, 1 - x.a) * x.V; }
+  }
   let cob = 0, gf = 0;
   for (const b of D.cobros) { if (corte && b.fecha > corte) continue;
     if (b.tipo === 'cobro') cob += b.monto || 0; else if (b.tipo === 'aporte_gf') gf += b.monto || 0; }
@@ -290,6 +302,29 @@ function renderTablero() {
     Cargalo en la pestaña <b>📐 Avance</b>.</div>`;
   if (tot.sinPart) h += `<div class="card" style="margin-bottom:12px;border-color:var(--bad)">Hay <b>₲ ${gs(tot.sinPart)}</b> en compras sin imputar
     (<a href="#" onclick="irCompras('sin');return false" style="color:var(--acc)">ver</a>). Cuentan en el costo total pero no en ninguna partida.</div>`;
+  // --- producción entregada vs pendiente (y contra lo cobrado)
+  const ultMed = D.avance.reduce((m, a) => a.fecha > m ? a.fecha : m, ''), adeud = tot.cobrado - tot.prodV;
+  const w = v => Math.max(0, v) / K * 100;
+  h += '<h2>Producción: entregada vs pendiente</h2><div class="card">' +
+    `<div class="stack"><i style="width:${w(Math.min(tot.prodV, tot.cobrado))}%;background:var(--ok)"></i>` +
+    `<i style="width:${w(adeud)}%;background:var(--warn)"></i><i style="width:${w(-adeud)}%;background:var(--acc)"></i>` +
+    `<i style="flex:1;background:var(--card2)"></i></div>` +
+    `<div class="leg"><span><b style="background:var(--ok)"></b>Entregado (producido) ${mm(tot.prodV)}</span>` +
+    (adeud >= 0 ? `<span><b style="background:var(--warn)"></b>Cobrado, pendiente de producir ${mm(adeud)}</span>`
+                : `<span><b style="background:var(--acc)"></b>Producido sin cobrar ${mm(-adeud)}</span>`) +
+    `<span><b style="background:var(--card2);border:1px solid var(--line)"></b>Sin cobrar ni producir ${mm(K - Math.max(tot.cobrado, tot.prodV))}</span></div></div>` +
+    '<div class="kpis" style="margin-top:10px">' +
+    kpi('Producción entregada', mm(tot.prodV), pc(tot.a * 100) + ' de la obra · medido al ' + fdate(ultMed), tot.a * 100) +
+    kpi('Producción pendiente', mm(tot.pendV), pc(100 - tot.a * 100) + ' de la obra · a costo objetivo ' + mm(tot.pendO)) +
+    kpi(adeud >= 0 ? 'Cobrado y aún no producido' : 'Producido sin cobrar', `<span class="${adeud >= 0 ? 'warn' : 'bad'}">${mm(Math.abs(adeud))}</span>`,
+        adeud >= 0 ? 'producción que se le debe a Pili' : 'falta certificar / cobrar') +
+    kpi('Pendiente que falta cobrar', mm(K - tot.cobrado), 'saldo del contrato') + '</div>';
+  if (tot.sinMedN || tot.d1N) h += `<div class="card" style="margin-top:10px;border-color:var(--warn)"><b>El ${pc(tot.a * 100)} es un piso, no el avance real.</b>` +
+    `<ul style="margin:6px 0 0 18px">` +
+    (tot.sinMedN ? `<li><b>${tot.sinMedN} partidas sin ninguna medición</b> (${mm(tot.sinMedV)}, ${pc(tot.sinMedV / tot.V * 100, 0)} de la obra) cuentan como 0 %.</li>` : '') +
+    (tot.d1N ? `<li><b>${tot.d1N} partidas medidas solo en el Dúplex 1</b>: el Dúplex 2 cuenta como 0 %. Si va igual que el 1, el avance sería <b>${pc((tot.prodV + tot.d1Extra) / tot.V * 100)}</b> (+${mm(tot.d1Extra)}).</li>` : '') +
+    `<li>Última medición: ${fdate(ultMed)}. Lo producido después no está contado.</li></ul>` +
+    `<div style="margin-top:8px"><a href="#" onclick="irAvance('sin');return false" style="color:var(--acc)">Cargar el avance de las partidas sin medir →</a></div></div>`;
   h += '<h2>Situación económica</h2><div class="kpis">' +
     kpi('Contrato (IVA inc.)', mm(K), `Venta partidas ${mm(tot.V)}`) +
     kpi('Cobrado a Pili', mm(tot.cobrado), pc(tot.cobrado / K * 100) + ' del contrato', tot.cobrado / K * 100) +
@@ -299,11 +334,8 @@ function renderTablero() {
     kpi('Comprado', mm(tot.C), pc(tot.C / tot.O * 100) + ' del objetivo', tot.C / tot.O * 100) +
     kpi('Costo final proyectado', mm(tot.proy), 'comprado + pendiente según objetivo') +
     kpi('Margen proyectado', `<span class="${margenProy < 0 ? 'bad' : 'ok'}">${mm(margenProy)}</span>`, pc(margenProy / K * 100) + ' del contrato') +
-    '</div><h2>Producción y tiempo</h2><div class="kpis">' +
-    kpi('Avance físico', pc(tot.a * 100), 'ponderado por venta', tot.a * 100) +
-    kpi('Producido (venta)', mm(tot.prodV), `a costo objetivo ${mm(tot.prodO)}`) +
-    kpi('Falta producir (venta)', mm(tot.pendV), `a costo objetivo ${mm(tot.pendO)}`) +
-    kpi('Cobrado − producido', `<span class="${dif < 0 ? 'bad' : ''}">${mm(dif)}</span>`, dif >= 0 ? 'anticipo financiero del cliente' : 'producido sin cobrar') +
+    '</div><h2>Consumo y tiempo</h2><div class="kpis">' +
+    kpi('Costo de lo producido', mm(tot.prodO), 'según objetivo') +
     kpi('Consumo vs avance', `<span class="${tot.C - tot.prodO - tot.sinPart > 0 ? 'warn' : 'ok'}">${mm(tot.C - tot.prodO)}</span>`, 'comprado − costo esperado del avance') +
     kpi('Plazo', `${Math.round(trans)} de ${Math.round(plazo)} días`, `inicio ${fdate(D.obra.inicio)} · fin previsto ${fdate(D.obra.fin_prevista)}`, trans / plazo * 100) +
     kpi('Fin proyectado', finProy ? finProy.toLocaleDateString('es-PY') : '—',
@@ -333,7 +365,7 @@ function renderTablero() {
     '<p class="mut small" style="margin-top:6px">La producción de cada trimestre sale de las mediciones de avance cargadas con fecha dentro del trimestre (la última medición ≤ fin de trimestre).</p>';
   // capítulos y partidas
   h += '<h2>Por capítulo y partida <span class="mut small">(tocá un capítulo para abrirlo)</span></h2><div class="tw"><table><thead><tr>' +
-    '<th>Capítulo / partida</th><th class="num">Venta</th><th class="num">Objetivo</th><th class="num">Avance</th><th class="num">Falta producir (venta)</th>' +
+    '<th>Capítulo / partida</th><th class="num">Venta</th><th class="num">Objetivo</th><th class="num">Avance</th><th class="num">Entregado (venta)</th><th class="num">Pendiente (venta)</th>' +
     '<th class="num">Comprado</th><th class="num">Costo esperado del avance</th><th class="num">Desvío</th><th class="num">Costo final proy.</th><th class="num">Margen proy.</th></tr></thead><tbody>';
   for (const c of CAPS) {
     const x = cap[c]; if (!x) continue; const av = x.V ? x.prodV / x.V : 0;
@@ -341,18 +373,21 @@ function renderTablero() {
     for (const p of D.partidas.filter(p => p.cap === c)) {
       const y = part[p.cod]; if (!y.V && !y.O && !y.C) continue;
       h += `<tr class="sub cap-${c.replace('.', '_')}" style="display:none"><td style="padding-left:22px">${esc(p.cod)} · ${esc(p.desc.slice(0, 55))}` +
-        `${p.grupo ? `<div class="mut small">${esc(p.grupo)}</div>` : ''}${y.fecha ? `<div class="mut small">medido ${fdate(y.fecha)}</div>` : ''}</td>` + fila(y, y.a) + '</tr>';
+        `${p.grupo ? `<div class="mut small">${esc(p.grupo)}</div>` : ''}${y.fecha ? `<div class="mut small">medido ${fdate(y.fecha)}${y.soloD1 ? ' · solo Dúplex 1' : ''}</div>` : ''}</td>` +
+        fila(y, y.a, !y.med && !p.cod.endsWith('.GEN')) + '</tr>';
     }
   }
-  if (tot.sinPart) h += `<tr><td>Sin imputar</td><td></td><td></td><td></td><td></td><td class="num">${gs(tot.sinPart)}</td><td></td><td class="num bad">${gs(tot.sinPart)}</td><td class="num">${gs(tot.sinPart)}</td><td class="num bad">${gs(-tot.sinPart)}</td></tr>`;
+  if (tot.sinPart) h += `<tr><td>Sin imputar</td><td></td><td></td><td></td><td></td><td></td><td class="num">${gs(tot.sinPart)}</td><td></td><td class="num bad">${gs(tot.sinPart)}</td><td class="num">${gs(tot.sinPart)}</td><td class="num bad">${gs(-tot.sinPart)}</td></tr>`;
   h += `<tr class="tot"><td>Total</td>` + fila(tot, tot.a) + '</tr></tbody></table></div>' +
     '<p class="mut small" style="margin-top:6px">Desvío = comprado − costo esperado del avance (positivo: se gastó más de lo que corresponde a lo producido). ' +
     'Costo final proy. = comprado + lo que falta según objetivo. Los capítulos <span class="chip prov">prov.</span> usan el presupuesto viejo hasta que estén en el Presto.</p>';
   $('#t-tablero').innerHTML = h;
 }
-function fila(x, av) {
+function fila(x, av, sinMedir) {
   const des = x.C - x.prodO, mg = x.V - x.proy;
-  return `<td class="num">${gs(x.V)}</td><td class="num">${gs(x.O)}</td><td class="num">${pc(av * 100, 0)}</td><td class="num">${gs(x.pendV)}</td>` +
+  return `<td class="num">${gs(x.V)}</td><td class="num">${gs(x.O)}</td>` +
+    `<td class="num">${sinMedir ? '<span class="chip rev" title="sin medición: cuenta como 0 %">sin medir</span>' : pc(av * 100, 0)}</td>` +
+    `<td class="num">${gs(x.prodV)}</td><td class="num">${gs(x.pendV)}</td>` +
     `<td class="num">${gs(x.C)}</td><td class="num">${gs(x.prodO)}</td><td class="num ${des > 0 ? 'bad' : ''}">${gs(des)}</td>` +
     `<td class="num">${gs(x.proy)}</td><td class="num ${mg < 0 ? 'bad' : ''}">${gs(mg)}</td>`;
 }
@@ -484,11 +519,15 @@ async function renderHist() {
 // ------------------------------------------------------------------ avance
 const CAMB = new Map();
 function renderAvance() {
-  const fc = $('#acap').value;
+  const fc = $('#acap').value, ff = $('#afil').value;
   let h = '';
   for (const c of CAPS) {
     if (fc && c !== fc) continue;
-    const ps = D.partidas.filter(p => p.cap === c && !p.cod.endsWith('.GEN'));
+    const ps = D.partidas.filter(p => p.cap === c && !p.cod.endsWith('.GEN')).filter(p => {
+      if (!ff) return true;
+      const a = pctA(p.cod, null);
+      return ff === 'sin' ? !a : !!a && /D2 sin medir/.test(a.nota || '');
+    });
     if (!ps.length) continue;
     h += `<tr class="tot"><td colspan="6">${c} · ${esc(D.obra.caps[c])} ${PROV.has(c) ? '<span class="chip prov">prov.</span>' : ''}</td></tr>`;
     for (const p of ps) {
@@ -503,7 +542,8 @@ function renderAvance() {
   $('#atb').innerHTML = h;
   $('#aguardar').disabled = !CAMB.size; $('#aguardar').textContent = CAMB.size ? `Guardar cambios (${CAMB.size})` : 'Guardar cambios';
 }
-$('#acap').onchange = renderAvance;
+$('#acap').onchange = renderAvance; $('#afil').onchange = renderAvance;
+window.irAvance = f => { tab('avance'); $('#afil').value = f; renderAvance(); };
 $('#atb').addEventListener('input', e => {
   const cod = e.target.dataset.av || e.target.dataset.nota; if (!cod) return;
   const x = CAMB.get(cod) || {};
